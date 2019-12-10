@@ -134,8 +134,13 @@ def calculate_loans():
       print(f"Loan {loan_id} total: ${round(loan_total, 2):,.2f}")
       total += loan_total
         
-  print(f"\nTotal of all loans: ${round(total, 2):,.2f}")
-  print(f"Cash Value of all loans: ${sum(amounts):,.2f}")
+  total = round(total, 2)
+  cash_value = sum(amounts)
+  total_interest = total - cash_value
+  
+  print(f"\nTotal of all loans: ${total:,.2f}")
+  print(f"Cash value of all loans: ${cash_value:,.2f}")
+  print(f"Total interest of all loans: ${total_interest:,.2f}")
   print(f"Total average monthly payment: ${round(sum(avg_payments), 2):,.2f}\n")
 
 
