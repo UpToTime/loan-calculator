@@ -17,3 +17,21 @@ def index():
     }
 
     return template('index.html', **context)
+
+
+@get('/loan/create')
+def index():
+    context = {
+        'active': 'add-loan'
+    }
+
+    return template('add-loan.html', **context)
+
+
+@get('/report/read/details')
+def index():
+    context = {
+        'active': 'report-details'
+    }
+
+    return template('report-details.html', **context)
