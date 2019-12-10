@@ -5,7 +5,10 @@ c.execute('''CREATE TABLE IF NOT EXISTS Loans
              (id INTEGER PRIMARY KEY, 
              amount REAL NOT NULL, 
              duration INTEGER NOT NULL,
-             interestRate REAL NOT NULL)''')
+             interestRate REAL NOT NULL,
+             paymentStart INTEGER NOT NULL,
+             accruementStart INTEGER NOT NULL,
+             isCompound INTEGER NOT NULL)''')
 
 def print_main_menu():
   print("What would you like to do?")
@@ -14,28 +17,33 @@ def print_main_menu():
   print("3. Update a loan")
   print("4. Delete a loan")
   print("5. Calculate")
-  print("6. Exit")
+  print("6. What should I ask my loan officer?")
+  print("7. Exit")
 
 def add_loan():
   loan_amount = int(input("\nHow much is the loan:  "))
   loan_duration = int(input("How long is the loan (in months):  "))
   loan_interest_rate = float(input("What is the interest rate on the loan:  ")) / 100
+  payment_start = int(input("In how many months do you start to pay off the loan?  "))
+  accruement_start = int(input("In how many months does the loan start to accrue interest?  "))
+  is_compound = int(input("Does your loan use compounded interest (0 for no, 1 for yes)?  "))
 
-  c.execute('''INSERT INTO Loans ('amount', 'duration', 'interestRate') VALUES (?,?,?)''', (loan_amount, loan_duration, loan_interest_rate))
+  c.execute('''INSERT INTO Loans ('amount', 'duration', 'interestRate', 'paymentStart', 'accruementStart', 'isCompound') VALUES (?,?,?,?,?,?)''', 
+            (loan_amount, loan_duration, loan_interest_rate, payment_start, accruement_start, is_compound))
   conn.commit()
   print("Loan added!\n")
 
 def view_loans():
-  fetched_loans = c.execute("SELECT id, amount, duration, interestRate FROM Loans")
+  fetched_loans = c.execute("SELECT id, amount, duration, interestRate, paymentStart, accruementStart, isCompound FROM Loans")
   print("\nLoans:")
   for loan in fetched_loans:
-    print(f"id: {loan[0]}, amount: ${round(loan[1], 2):,}, duration: {loan[2]} months, interest rate: {loan[3] * 100}%")
+    print(f"id: {loan[0]}, amount: ${round(loan[1], 2):,.2f}, duration: {loan[2]} months, interest rate: {loan[3] * 100}%, start payment in: {loan[4]} months, starts accruing interest in: {loan[5]} months, uses compound interest: {'false' if loan[6] == 0 else 'true'}")
   print()
 
 def update_loan():
   view_loans()
   loan_id = input("What is the id of the loan you want to update?  ")
-  fetched_loan = c.execute("SELECT amount, duration, interestRate FROM Loans WHERE id=?", (loan_id)).fetchone()
+  fetched_loan = c.execute("SELECT amount, duration, interestRate, paymentStart, accruementStart, isCompound FROM Loans WHERE id=?", (loan_id)).fetchone()
   print("\nPress enter to skip and keep the current value")
   loan_amount = input("How much is the loan:  ")
   loan_amount = fetched_loan[0] if loan_amount == '' else int(loan_amount) 
@@ -43,8 +51,15 @@ def update_loan():
   loan_duration = fetched_loan[1] if loan_duration == '' else int(loan_duration)
   loan_interest_rate = input("What is the interest rate on the loan:  ")
   loan_interest_rate = fetched_loan[2] if loan_interest_rate == '' else float(loan_interest_rate) / 100
+  payment_start = input("In how many months do you start to pay off the loan?  ")
+  payment_start = fetched_loan[3] if payment_start == '' else int(payment_start)
+  accruement_start = input("In how many months does the loan start to accrue interest?  ")
+  accruement_start = fetched_loan[4] if accruement_start == '' else int(accruement_start)
+  is_compound = input("Does your loan use compounded interest (0 for no, 1 for yes)?  ")
+  is_compound = fetched_loan[5] if is_compound == '' else int(is_compound)
 
-  c.execute("UPDATE Loans SET amount=?,duration=?,interestRate=? WHERE id=?", (loan_amount, loan_duration, loan_interest_rate, loan_id))
+  c.execute("UPDATE Loans SET amount=?,duration=?,interestRate=?,paymentStart=?,accruementStart=?,isCompound=? WHERE id=?", 
+            (loan_amount, loan_duration, loan_interest_rate, payment_start, accruement_start, is_compound, loan_id))
   conn.commit()
   print("Loan Updated!\n")
 
@@ -56,22 +71,24 @@ def delete_loan():
   print("Loan Deleted!\n")
 
 def calculate_loans():
-  loans = c.execute("SELECT id, amount, duration, interestRate FROM Loans")
+  loans = c.execute("SELECT id, amount, duration, interestRate, paymentStart, accruementStart, isCompound FROM Loans")
   print("\nCalculating loans. . .")
   total = 0
   for loan in loans:
     interest = 0
-    loan_id = loan[0]
-    loan_amount = loan[1]
-    loan_length = loan[2]
-    interest_rate = loan[3]
-    daily_interest_rate = interest_rate / 365
-    daily_interest = daily_interest_rate * loan_amount
-    monthly_interest = daily_interest * 30
-    total_interest = monthly_interest * loan_length
-    total_loan_after_grad = total_interest + loan_amount
-    total += total_loan_after_grad
-    print(f"Loan {loan_id} total: ${round(total_loan_after_grad, 2):,}")
+    (loan_id, loan_amount, loan_length, interest_rate, payment_start, accruement_start, is_compound) = loan
+    days_per_month = 365 / 12
+    if is_compound == 0:
+      daily_interest_rate = interest_rate / 365
+      loan_total = loan_amount * daily_interest_rate * (days_per_month * loan_length) + loan_amount
+      print(f"Loan {loan_id} total: ${round(loan_total, 2):,.2f}")
+      total += loan_total
+    elif is_compound == 1:
+      monthly_interest_rate = interest_rate / 12
+      loan_total = loan_amount * (1 + (monthly_interest_rate / days_per_month)) ** (days_per_month * loan_length)
+      print(f"Loan {loan_id} total: ${round(loan_total, 2):,.2f}")
+      total += loan_total
+        
   print(f"\nTotal of all loans: ${round(total, 2):,}\n")
 
 def close_app():
@@ -98,6 +115,8 @@ def main():
     elif main_menu_selection == 5:
       calculate_loans()
     elif main_menu_selection == 6:
+      print("\nrecommended questions coming soon\n")
+    elif main_menu_selection == 7:
       close_app()
 
 if __name__ == "__main__":
