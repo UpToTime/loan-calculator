@@ -80,7 +80,10 @@ def calculate_loans():
   loans = c.execute("SELECT id, amount, duration, interestRate, paymentStart, accruementStart, isCompound FROM Loans")
   print("\nCalculating loans. . .")
   total = 0
+  avg_payments = []
   for loan in loans:
+
+    payments = []
 
     (loan_id, loan_amount, loan_length, interest_rate, payment_start, accruement_start, is_compound) = loan
     days_per_month = 30
@@ -102,6 +105,7 @@ def calculate_loans():
             payment = get_simple_interest_principal(principal, daily_interest_rate, days_left) / (days_left // days_per_month)
             principal -= payment
             loan_total += payment
+            payments.append(payment)
         if i >= interest_free_days: # if past interest start date, add compound interest
           principal += original_principal * daily_interest_rate
     elif is_compound == 1:
@@ -112,10 +116,15 @@ def calculate_loans():
             payment = get_compound_interest_principal(principal, daily_interest_rate, 1, days_left) / (days_left // days_per_month)
             principal -= payment
             loan_total += payment
+            payments.append(payment)
         if i >= interest_free_days: # if past interest start date, add simple interest
           principal += principal * daily_interest_rate
+      
+      avg_payment = round(sum(payments) / len(payments), 2)
+      avg_payments.append(avg_payment)
 
       print(f"Loan {loan_id} total: ${round(loan_total, 2):,.2f}")
+      print(f"\tAverage monthly payment: ${avg_payment:,.2f}")
       total += loan_total
     elif is_compound == 1:
       monthly_interest_rate = interest_rate / 12
@@ -123,7 +132,9 @@ def calculate_loans():
       print(f"Loan {loan_id} total: ${round(loan_total, 2):,.2f}")
       total += loan_total
         
-  print(f"\nTotal of all loans: ${round(total, 2):,}\n")
+  print(f"\nTotal of all loans: ${round(total, 2):,}")
+  print(f"\tTotal average monthly payment: ${round(sum(avg_payments), 2):,.2f}\n")
+
 
 def close_app():
   global should_exit
