@@ -70,22 +70,56 @@ def delete_loan():
   conn.commit()
   print("Loan Deleted!\n")
 
+def get_compound_interest_principal(principal, rate, number_of_compounds_per_interval, intervals):
+  return principal * (1 + (rate / number_of_compounds_per_interval)) ** (number_of_compounds_per_interval * intervals)
+
+def get_simple_interest_principal(principal, rate, intervals):
+  return principal + (principal * rate * intervals)
+
 def calculate_loans():
   loans = c.execute("SELECT id, amount, duration, interestRate, paymentStart, accruementStart, isCompound FROM Loans")
   print("\nCalculating loans. . .")
   total = 0
   for loan in loans:
-    interest = 0
+
     (loan_id, loan_amount, loan_length, interest_rate, payment_start, accruement_start, is_compound) = loan
-    days_per_month = 365 / 12
+    days_per_month = 30
+    payment_free_days = payment_start * days_per_month
+    payment_days = (loan_length - payment_start) * days_per_month
+    interest_free_days = accruement_start * days_per_month
+    interest_days = (loan_length - accruement_start) * days_per_month
+    loan_days = loan_length * days_per_month
+    principal = loan_amount
+    daily_interest_rate = interest_rate / 365
+    loan_total = 0
+
     if is_compound == 0:
-      daily_interest_rate = interest_rate / 365
-      loan_total = loan_amount * daily_interest_rate * (days_per_month * loan_length) + loan_amount
+      original_principal = principal
+      for i in range(0, loan_days):
+        days_left = loan_days - i
+        if i >= payment_free_days: # if past payment start date, pay on the first of every month
+          if i % days_per_month < 1:
+            payment = get_simple_interest_principal(principal, daily_interest_rate, days_left) / (days_left // days_per_month)
+            principal -= payment
+            loan_total += payment
+        if i >= interest_free_days: # if past interest start date, add compound interest
+          principal += original_principal * daily_interest_rate
+    elif is_compound == 1:
+      for i in range(0, loan_days):
+        days_left = loan_days - i
+        if i >= payment_free_days: # if past payment start date, pay on the first of every month
+          if i % days_per_month < 1:
+            payment = get_compound_interest_principal(principal, daily_interest_rate, 1, days_left) / (days_left // days_per_month)
+            principal -= payment
+            loan_total += payment
+        if i >= interest_free_days: # if past interest start date, add simple interest
+          principal += principal * daily_interest_rate
+
       print(f"Loan {loan_id} total: ${round(loan_total, 2):,.2f}")
       total += loan_total
     elif is_compound == 1:
       monthly_interest_rate = interest_rate / 12
-      loan_total = loan_amount * (1 + (monthly_interest_rate / days_per_month)) ** (days_per_month * loan_length)
+      loan_total = loan_amount * (1 + (monthly_interest_rate / days_per_month)) ** (days_per_month * non_payment_length)
       print(f"Loan {loan_id} total: ${round(loan_total, 2):,.2f}")
       total += loan_total
         
