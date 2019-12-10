@@ -81,11 +81,13 @@ def calculate_loans():
   print("\nCalculating loans. . .")
   total = 0
   avg_payments = []
+  amounts = []
   for loan in loans:
 
     payments = []
 
     (loan_id, loan_amount, loan_length, interest_rate, payment_start, accruement_start, is_compound) = loan
+    amounts.append(loan_amount)
     days_per_month = 30
     payment_free_days = payment_start * days_per_month
     payment_days = (loan_length - payment_start) * days_per_month
@@ -132,8 +134,9 @@ def calculate_loans():
       print(f"Loan {loan_id} total: ${round(loan_total, 2):,.2f}")
       total += loan_total
         
-  print(f"\nTotal of all loans: ${round(total, 2):,}")
-  print(f"\tTotal average monthly payment: ${round(sum(avg_payments), 2):,.2f}\n")
+  print(f"\nTotal of all loans: ${round(total, 2):,.2f}")
+  print(f"Cash Value of all loans: ${sum(amounts):,.2f}")
+  print(f"Total average monthly payment: ${round(sum(avg_payments), 2):,.2f}\n")
 
 
 def close_app():
